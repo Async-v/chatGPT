@@ -1,0 +1,83 @@
+import userModel from '../models/user.model.js';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import configEnv from '../config/config.js'
+
+async function registerUser(req, res){
+
+    const {fullName: {firstName, lastName}, email, password} = req.body
+
+    const isUserAlreadyExists = await userModel.findOne({email})
+
+    if(isUserAlreadyExists){
+        return res.status(400).json({
+            message: "User already exists"
+        })
+    }
+
+    const hashPassword = await bcrypt.hash(password, 10)
+
+    const user = await userModel.create({
+        fullName: {
+            firstName, lastName
+        },
+        email,
+        password: hashPassword
+    })
+
+    const token = jwt.sign({_id: user._id}, configEnv.JWT_SECRET)
+
+    res.cookie("token", token)
+
+    return res.status(201).json({
+        message: "User registered successfully",
+        data: {
+            user: {
+                email: user.email,
+                _id: user._id,
+                fullName: user.fullName
+            }
+        }
+    })
+
+}
+
+async function loginUser(req, res) {
+    
+    const { email, password } = req.body;
+
+    const user = await userModel.findOne({email})
+    if(!user){
+        return res.status(400).json({
+            message: "invaild email or password"
+        })
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if(!isPasswordValid){
+        return res.status(400).json({
+            message: "invaild email or password"
+        })
+    }
+
+    const token = await jwt.sign({_id: user._id}, configEnv.JWT_SECRET);
+
+    res.cookie("token", token)
+
+    return res.status(200).json({
+        message: "User loggedIn successfully",
+        data: {
+            user: {
+                fullName: user.fullName,
+                email: user.email,
+                _id: user._id
+            }
+        }
+    })
+
+}
+
+export default {
+    registerUser,
+    loginUser
+}
