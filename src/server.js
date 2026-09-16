@@ -1,8 +1,14 @@
 import app from "./app/app.js";
 import connectDB from "./config/db.js";
+import initSocketServer from "./sockets/socket.server.js";
+import { createServer } from "http";
 
-connectDB()
+const httpServer = createServer(app);
 
-app.listen(3000, ()=>{
+connectDB();
+
+initSocketServer(httpServer);
+
+httpServer.listen(3000, ()=>{
     console.log('server is running on port 3000')
 })
